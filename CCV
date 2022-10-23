@@ -1,0 +1,214 @@
+import numpy as np
+import plotly.offline as pyo
+import plotly.graph_objs as go
+import pandas as pd
+import plotly.express as px
+
+###################################
+full_data = pd.read_csv('full_data.csv')
+full_data[['5yr-avg_rdness','5yr-avg_vuln']] = full_data[['5yr-avg_rdness','5yr-avg_vuln']].round(3)
+full_data=full_data[~full_data['5yr-avg_gdp'].isna()]
+#full_data['5yr-avg_gdp_log'] = np.log10(full_data['5yr-avg_gdp'])
+#print(full_data['5yr-avg_gdp_log'].describe())
+
+# data = [go.Scatter(y=full_data['5yr-avg_rdness'], 
+#                     x=full_data['5yr-avg_vuln'],
+#                     mode='markers',
+#                     #mode='markers+text',
+#                     text=full_data['Name'],
+#                     #textposition="top center",
+#                     marker=dict(size=10,
+#                                 line_width=2,
+#                                 line_color='black'),
+#                     hovertemplate=
+#                                     "Country: <b>%{text}</b><br>" +
+#                                     "Vulnerability index: %{x} <br>" +
+#                                     "Readiness index: %{y} <br>"
+#                                     "<extra></extra>"
+#                     )]
+# layout=go.Layout(title="Climate change vulnerability and readiness",
+#                 title_x=0.5,
+#                 xaxis_title="Vulnerability index, 2015-2019 avg. (0 to 1, lower is better)",
+#                 hovermode="closest",
+#                 yaxis_title="Readiness index, 2015-2019 avg. (0 to 1, higher is better)")
+# fig=go.Figure(data=data, layout=layout)
+
+# pyo.plot(fig, filename="chart_1.html")
+
+#####################################
+regions = list(full_data['Region'].unique())
+colors_list = ['orange', 'green', 'yellow', 'red', 'skyblue', 'indigo', 'blue']
+# data = []
+
+# for region in regions:
+#     region_df = full_data[full_data['Region']==region]
+#     x = region_df['5yr-avg_vuln']
+#     y = region_df['5yr-avg_rdness']
+#     trace = go.Scatter(x = x, 
+#                         y = y, 
+#                         mode='markers',
+#                         customdata=region_df[["Region","Name"]],
+#                         hovertemplate=
+#                                     "Country: <b>%{customdata[1]}</b><br>" +
+#                                     "Region: %{customdata[0]} <br>" +
+#                                     "Vulnerability index: %{x} <br>" +
+#                                     "Readiness index: %{y} <br>"
+#                                     "<extra></extra>",
+#                         marker=dict(size=10,
+#                                     line_width=2,
+#                                     line_color='black'),
+#                         name=region)
+#     data.append(trace)
+
+# layout=go.Layout(title="Climate change vulnerability and readiness, by region",
+#                 title_x=0.5,
+#                 xaxis_title="Vulnerability index, 2015-2019 avg. (0 to 1, lower is better)",
+#                 hovermode="closest",
+#                 yaxis_title="Readiness index, 2015-2019 avg. (0 to 1, higher is better)",
+#                 legend = dict(x=0.8, 
+#                             y=0.9, 
+#                             bgcolor='rgb(240,240,201)',
+#                             borderwidth=3,
+#                             title_text="Regions"))
+# fig=go.Figure(data=data, layout=layout)
+
+# pyo.plot(fig, filename="chart_2.html")
+
+#####################################
+data = []
+#full_data=full_data[~full_data['Name'].isin(['China', 'United States'])]
+full_data['gdp_bn'] = full_data["5yr-avg_gdp"]/1000000000
+full_data['log_n'] = full_data["5yr-avg_gdp"]**(1/7.5)
+
+
+for region in regions:
+    region_df = full_data[full_data['Region']==region]
+    region_idx = regions.index(region)
+    x = region_df['5yr-avg_vuln']
+    y = region_df['5yr-avg_rdness']
+    s = region_df['log_n']
+    customdata=[region_df["Region"],region_df["gdp_bn"]]
+    trace = go.Scatter(x = x, 
+                        y = y, 
+                        mode='markers',
+                        customdata=region_df[["Region","gdp_bn"]],
+                        text = region_df["Name"],
+                        hovertemplate=
+                                    "Country: <b>%{text}</b><br>" +
+                                    "Region: %{customdata[0]} <br>" +
+                                    "Vulnerability index: %{x} <br>" +
+                                    "Readiness index: %{y} <br>"
+                                    "GDP (in $bn): %{customdata[1]:.2f}<br>" + 
+                                    "<extra></extra>",
+                        marker=dict(size=s,
+                                    color=colors_list[region_idx],
+                                    #opacity=0.7,
+                                    line_width=1.5,
+                                    line_color='black'
+                                    ),
+                        name=region)
+    data.append(trace)
+
+layout=go.Layout(title="Climate change vulnerability and preparedness",
+                title_font_size=35,
+                title_x=0.5,
+                title_y=0.92,
+                xaxis_title="Vulnerability index, 2015-2019 avg. (0 to 1, lower is better)",
+                hovermode="closest",
+                yaxis_title="Readiness index, 2015-2019 avg. (0 to 1, higher is better)",
+                xaxis_showgrid=False,
+                yaxis_showgrid=False,
+                legend = dict(
+                            x=0.77, 
+                            y=0.9, 
+                            bgcolor='rgb(240,240,201)',
+                            borderwidth=0,
+                            title_text="Regions"))
+fig=go.Figure(data=data, layout=layout)
+
+full_data_nona = full_data.dropna(how='any')
+#Top box
+fig.add_shape(
+            type="rect",
+            y0=(np.percentile(full_data_nona['5yr-avg_rdness'],75))-0.0125,
+            y1=(np.max(full_data['5yr-avg_rdness']))+0.0125,
+            x1=(np.percentile(full_data_nona['5yr-avg_vuln'],10))+0.01,
+            x0=(np.min(full_data['5yr-avg_vuln']))-0.01,
+            #y0=0.44,y1=0.86,
+            #x0=0.23,x1=0.36,
+            visible=False,
+            line=dict(
+                color="black",
+                width=2)
+)
+
+#Bottom box
+fig.add_shape(
+            type="rect",
+            y0=(np.min(full_data['5yr-avg_rdness']))-0.0125,
+            y1=(np.percentile(full_data_nona['5yr-avg_rdness'],25))+0.0125,
+            x1=(np.max(full_data['5yr-avg_vuln']))+0.01,
+            x0=(np.percentile(full_data_nona['5yr-avg_vuln'],90))-0.01,
+            #y0=0.1,y1=0.45,
+            #x0=0.55,x1=0.69,
+            visible=False,
+            line=dict(
+                color="black",
+                width=2)
+)
+
+fig.add_annotation(dict(
+                        x=0.5, y=1,xref='paper',yref='paper',
+                        text="Note: Bigger bubble depicts larger GDP",
+                        font_size=12,
+                        font_color='black',
+                        showarrow=False,
+                        bgcolor='rgb(240,240,201)',
+                        ))
+
+default_annotation = [dict(
+                        x=0.5, y=1,xref='paper',yref='paper',
+                        text="Note: Bigger bubble depicts larger GDP",
+                        font_size=12,
+                        font_color='black',
+                        showarrow=False,
+                        bgcolor='rgb(240,240,201)',
+                        )]
+
+not_in_need = [{
+                'x': 0.55, 'y': 0.9, 'xref': 'paper', 'yref': 'paper',
+                'text': 'At this end of the chart are countries least <br>' + 
+                        'vulnerable to climate change risks but most <br>' +
+                        'prepared to adapt. They have relatively large <br>' +
+                        'GDPs and are mostly in Europe. Hover on the <br>' + 
+                        'bubbles to see specific country data.',
+                'font': {'size': 12, 'color': 'black'},
+                #'bgcolor': 'rgb(237, 64, 200)',
+                'showarrow': False
+                }]
+
+in_need = [{
+                'x': 0.55, 'y': 0.9, 'xref': 'paper', 'yref': 'paper',
+                'text': 'At this end of the chart are countries highly <br>' + 
+                        'vulnerable to climate change risks but least <br>' +
+                        'prepared to adapt. They have relatively small <br>' +
+                        'GDPs and are mostly in Africa. Hover on the <br>' +
+                        'bubbles to see specifc country data.',
+                'font': {'size': 12, 'color': 'black'},
+                #'bgcolor': 'rgb(237, 64, 200)',
+                'showarrow': False
+                }]
+
+sliders = [
+        {'steps': [
+        {'method': 'relayout', 'label': 'Prepared but not vulnerable', 'args':[{"annotations":not_in_need+default_annotation, 'shapes[1].visible':False,'shapes[0].visible':True}]},
+        {'method': 'relayout', 'label': 'Reset', 'args':[{"annotations": default_annotation, 'shapes[1].visible':False,'shapes[0].visible':False}]},
+        {'method': 'relayout', 'label': 'Vulnerable but unprepared', 'args':[{"annotations":in_need+default_annotation, 'shapes[0].visible':False,'shapes[1].visible':True}]},
+        ],
+        'active':1,
+        'currentvalue':{"visible":False},
+        'pad':{"t": 50, "b":10, "l":300, "r":300}}]
+fig.update_layout({"sliders": sliders})
+
+pyo.plot(fig, filename="chart_3.html")
+
